@@ -114,3 +114,6 @@ ENV/
 *.model
 
 !documentation/assets/scribble_example.png
+
+# VS Code
+.DS_Store
