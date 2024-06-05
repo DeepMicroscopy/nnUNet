@@ -1,0 +1,20 @@
+{
+    "channel_names": {
+        "0": "rgb_to_0_1",
+        "1": "rgb_to_0_1",
+        "2": "rgb_to_0_1"
+    },
+    "labels": {
+        "background": 0,
+        "roi": 1,
+        "pd-l1+ tumor": 2,
+        "pd-l1- tumor": 3,
+        "unknown": 4,
+        "center": 5
+    },
+    "label_sample_weights": {
+        "pd-l1+ tumor": 0.334,
+        "pd-l1- tumor": 0.333,
+        "unknown": 0.333
+    }
+}

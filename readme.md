@@ -1,3 +1,78 @@
+# Welcome to nnUNet for pathology!
+This repository contains code for applying nnUNet to pathology applications and is related to our [MIDL long paper](https://openreview.net/forum?id=aHuwlUu_QR). The [nnunet_for_pathology_v1 branch](https://github.com/DIAGNijmegen/nnUNet-for-pathology/tree/nnunet_for_pathology_v1) contains the code used in the paper, and guides you through the steps taken to achieve our #1 segmentation performance on the [TIGER challenge](https://tiger.grand-challenge.org/)'s experimental test set.
+
+# nnUNet with dynamic dataloading!
+The code available in **this branch** is built on nnUNet version 2, and comes with adjustable dataloaders that broaden the applicability of nnUNet to pathology data. Given the large size and high resolution of pathology Whole Slide Images (WSI), the static dataset approach of nnUNet may not meet the needs of all pathology segmentation tasks. hence, this version of nnUNet-for-pathology is equipped with dynamic dataloaders, that allows to sample from WSIs and corresponding Whole Slide Annotations: xml, json, or masks (that you can convert to xml or json using code that comes with this repo). 
+
+# Main changes are:
+1) A simplified workflow and train script
+2) A new experiment planner
+3) New configurable pathology dataloaders
+4) Utility code with a WSI inference pipeline, code to convert label masks to xml or jsons, and to test your dataloading 
+
+## A simplified workflow and train script ([click here](https://github.com/DIAGNijmegen/nnUNet-for-pathology/blob/nnunet_for_pathology_v2/pathology_code_and_utils/installs_and_run_training.sh))
+With the use of dynamic dataloaders we do not need to preprocess and fingerprint a full dataset of static images and labels. Therefore all required files for training can directly be put in your `nnUNet_preprocessed folder`. This folder, as with usual nnUNet, should contain folders for dedicated datasets (for example Dataset001_TIGER_challenge). This dataset folder should contain 2 simple jsons: a `files.json` (containing the paths to your files), and a `dataset.json` (containing the mapping of the labels in your annotations, and optional label sampling weights). Next you should take a trainer name from the pathology trainers that suits your needs. Additionally you should add your `nnUNet_raw`, `nnUNet_preprocessed`, and `nnUNet_results paths` (and optionally your `weights and biases API key`) to the simplified train script: [installs_and_run_training.sh](https://github.com/DIAGNijmegen/nnUNet-for-pathology/blob/nnunet_for_pathology_v2/pathology_code_and_utils/installs_and_run_training.sh).
+
+Altogether you can train your model with the following command:
+
+`bash installs_and_run_training.sh <dataset index> <fold> <trainer name>`
+
+example:
+
+`bash installs_and_run_training.sh 1 0 nnUNetTrainer_WSD_bal_nnunet_aug`
+
+The script will:
+1) Install your nnUNet folder as the nnunetv2 module
+2) Export your nnUNet paths and wandb api key
+3) Run the new pathology experiment planner using your `dataset.json` (and optionally your `GPU size`)
+4) Train your specified `fold` on your files in the `files.json` (or `splits.json` if its present) using the specified `trainer`
+
+In step 4 the model will search for a `splits.json` in the dataset folder of your nnUNet_preprocesed path. If it doesnt exits, it will take your `files.json` and split it randomly into 5 training/validation folds. Examples of the json files can be found [here](https://github.com/DIAGNijmegen/nnUNet-for-pathology/tree/nnunet_for_pathology_v2/pathology_code_and_utils/example_jsons).
+
+# A new experiment planner ([click here](https://github.com/DIAGNijmegen/nnUNet-for-pathology/blob/nnunet_for_pathology_v2/nnunetv2/experiment_planning/experiment_planners/pathology_experiment_planner.py))
+With the use of dynamic dataloading we do not need to fingerprint our full static dataset to find all preferred hyperparameters for your nnUNet model. Therefore, the experiment planning part could be simplified a lot, and some hyperparameters like the spacing should be defined in the Trainer. This may seem to bypass the idea of nnUNet to define all hyperparameters for you, but to make nnUNet v1 applicable on pathology, we needed to create a static dataset with a predefined spacing and arbitrary patch sizes, which influenced the fingerprint as well. The current experiment planner only needs your `dataset.json`, and optimizes hyperparameters like the batch and patch size, and the depth of the model, etc. that will be used by your configurable dataloaders. Additionally it will replace instance normalization with batch normalization in your model, as proposed in our [MIDL paper](https://openreview.net/forum?id=aHuwlUu_QR)
+
+# New configurable pathology dataloaders ([click here](https://github.com/DIAGNijmegen/nnUNet-for-pathology/tree/nnunet_for_pathology_v2/nnunetv2/training/nnUNetTrainer/variants/pathology))
+We included a set of pathology trainers that allow you to sample dynamically (on the fly) from WSIs and their annotations. The dataloaders work with the Plans generated by the new experiment planner. Trainers are configured using predefined templates along with a few settings (such as your label mapping from your `dataset.json`, and sampling strategy) that you need to specify yourself. 
+
+All trainers currently inherit from the [nnUNetTrainer_WSD_undefined_dataloader](https://github.com/DIAGNijmegen/nnUNet-for-pathology/blob/nnunet_for_pathology_v2/nnunetv2/training/nnUNetTrainer/variants/pathology/nnUNetTrainer_WSD_undefined_dataloader.py) which is an adjusted default [nnUNetTrainer](https://github.com/DIAGNijmegen/nnUNet-for-pathology/blob/nnunet_for_pathology_v2/nnunetv2/training/nnUNetTrainer/nnUNetTrainer.py), and contains the default settings for pathology dataloading. This undefined_dataloader in itself is not functional, since it misses certain settings (hence its undefined) that are filled in by its child classes. It removed a lot of code that are no longer needed with our dynamic dataloading, and allows the construction of configurable dataloaders. In the current state we use the [WholeSlideData](https://github.com/DIAGNijmegen/pathology-whole-slide-data) library to construct configurable dataloaders, however, you are free to use this repository and put your own dataloader logic in the `get_dataloaders` function, that should simply return a train iterator and a val iterator on which the train loop can call `next()`.
+
+### Trainer names
+The currently available trainers have a structured name: 
+- nnUNetTrainer_WSD_ +
+- \<sampling strategy\> +
+- \<ignore label 0\> +
+- \<nnUNet or Albumentations augmentations\> +
+- \<use xml or json annotations\>
+
+### Sampling strategy
+Current available sampling stategies are:
+- `bal` (balanced) which will sample all lables (from your label mapping, specified in a dataset.json (see Simplified file structure section)) in a uniform manner
+- `wei` (weighted) which will sample labels according to label sample weights, that you need to specify next to your label mapping
+- `roi` which samples Regions Of Interest (ROIs), which is similar to default nnUNet dataloading, where individual static images (ROIs) are sampled.
+
+### Ignore label 0
+If regions of a WSI are not annotated, these pixels will get label 0, and are therefore 'unannoated' and not 'background' which is default nnUNet behaviour. Therefore trainers with `_i0` will make sure label 0 is treated as unannotated and will be ignored during loss calculation. Make sure you map 'true background' to 1 instead of 0 if you use `_i0` trainers. 
+
+### Augmentation
+We currently have 2 options for augmentation: nnUNet and Albumentations. nnunet augmention executes default nnnuent augmentations together with HED augmentation as proposed in our [MIDL paper](https://openreview.net/forum?id=aHuwlUu_QR). The implementation is somewhat different from our [v1 branch](https://github.com/DIAGNijmegen/nnUNet-for-pathology/tree/nnunet_for_pathology_v1), due to ongoing speed optimisation efforts. The other option is augmentation using Albumentations, where you can specify your complete set of augmentations in the trainer's template (which resides in the same folder).
+
+### XML vs JSON annotations
+XMLs are nice because they can be easily visualised in pathology image viewers like [ASAP](https://github.com/computationalpathologygroup/ASAP), but are slower and more working memory intensive during dataloading. 
+
+# Utility code ([click here](https://github.com/DIAGNijmegen/nnUNet-for-pathology/tree/nnunet_for_pathology_v2/pathology_code_and_utils))
+We added some examples, a WSI inference pipeline, code to convert masks to xml or json, and a notebook to test your training with its dataloader to [this](https://github.com/DIAGNijmegen/nnUNet-for-pathology/tree/nnunet_for_pathology_v2/pathology_code_and_utils) folder.
+
+# Docker
+We added a docker that we use in our group to the repo as well. If you encounter issues with dependencies, you might find a solution there.. 
+
+# Please note that the current state of the repo is not polished. With the release of this code we intend to support the community and stimulate the use of nnUNet in our domain. 
+---------------------------------------------------
+
+
+
+# Original nnUNet (v2) readme follows:
+
 # Welcome to the new nnU-Net!
 
 Click [here](https://github.com/MIC-DKFZ/nnUNet/tree/nnunetv1) if you were looking for the old one instead.

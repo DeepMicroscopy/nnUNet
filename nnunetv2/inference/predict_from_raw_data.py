@@ -500,6 +500,73 @@ class nnUNetPredictor(object):
         torch.set_num_threads(n_threads)
         return prediction
 
+    def get_logits_list_from_preprocessed_data(self, data: torch.Tensor) -> list:
+        """
+        This is an adjusted predict_logits_from_preprocessed_data function, where we get a list containing the logits of the ensemble's individual folds. 
+        We want these separate instead of averaged so we can use them to calculate uncertainty/disagreement between the folds in the pathology inference pipeline. 
+        
+        IMPORTANT! IF YOU ARE RUNNING THE CASCADE, THE SEGMENTATION FROM THE PREVIOUS STAGE MUST ALREADY BE STACKED ON
+        TOP OF THE IMAGE AS ONE-HOT REPRESENTATION! SEE PreprocessAdapter ON HOW THIS SHOULD BE DONE!
+
+        RETURNED LOGITS HAVE THE SHAPE OF THE INPUT. THEY MUST BE CONVERTED BACK TO THE ORIGINAL IMAGE SIZE.
+        SEE convert_predicted_logits_to_segmentation_with_correct_shape
+        """
+        # we have some code duplication here but this allows us to run with perform_everything_on_gpu=True as
+        # default and not have the entire program crash in case of GPU out of memory. Neat. That should make
+        # things a lot faster for some datasets.
+        original_perform_everything_on_gpu = self.perform_everything_on_gpu
+        with torch.no_grad():
+            predictions = []
+            if self.perform_everything_on_gpu:
+                try:
+                    predictions = []
+                    for params in self.list_of_parameters:
+                        # messing with state dict names...
+                        if not isinstance(self.network, OptimizedModule):
+                            self.network.load_state_dict(params)
+                        else:
+                            self.network._orig_mod.load_state_dict(params)
+
+                        # if len(prediction) is None:
+                        #     prediction = self.predict_sliding_window_return_logits(data)
+                        # else:
+                        #     prediction += self.predict_sliding_window_return_logits(data)
+                        
+                        predictions.append(self.predict_sliding_window_return_logits(data))
+
+                    # if len(self.list_of_parameters) > 1:
+                    #     prediction /= len(self.list_of_parameters)
+
+                except RuntimeError:
+                    print('Prediction with perform_everything_on_gpu=True failed due to insufficient GPU memory. '
+                          'Falling back to perform_everything_on_gpu=False. Not a big deal, just slower...')
+                    print('Error:')
+                    traceback.print_exc()
+                    predictions = []
+                    self.perform_everything_on_gpu = False
+
+            if len(predictions) == 0:
+                for params in self.list_of_parameters:
+                    # messing with state dict names...
+                    if not isinstance(self.network, OptimizedModule):
+                        self.network.load_state_dict(params)
+                    else:
+                        self.network._orig_mod.load_state_dict(params)
+
+                    # if prediction is None:
+                    #     prediction = self.predict_sliding_window_return_logits(data)
+                    # else:
+                    #     prediction += self.predict_sliding_window_return_logits(data)
+                    predictions.append(self.predict_sliding_window_return_logits(data))
+                if len(self.list_of_parameters) > 1:
+                    prediction /= len(self.list_of_parameters)
+
+            # print('Prediction done, transferring to CPU if needed')
+            # prediction = prediction.to('cpu')
+            predictions = [prediction.to('cpu') for prediction in predictions]
+            self.perform_everything_on_gpu = original_perform_everything_on_gpu
+        return predictions
+    
     def _internal_get_sliding_window_slicers(self, image_size: Tuple[int, ...]):
         slicers = []
         if len(self.configuration_manager.patch_size) < len(image_size):

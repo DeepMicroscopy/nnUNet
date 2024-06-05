@@ -1,0 +1,232 @@
+{
+    "0": {
+        "training": [
+            {
+                "wsi": {
+                    "path": "path/to/file_1.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_1.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_2.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_2.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_3.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_3.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_4.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_4.json"
+                }
+            }
+        ],
+        "validation": [
+            {
+                "wsi": {
+                    "path": "path/to/file_5.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_5.json"
+                }
+            }
+        ]
+    },
+    "1": {
+        "training": [
+            {
+                "wsi": {
+                    "path": "path/to/file_1.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_1.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_2.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_2.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_3.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_3.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_5.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_5.json"
+                }
+            }
+        ],
+        "validation": [
+            {
+                "wsi": {
+                    "path": "path/to/file_4.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_4.json"
+                }
+            }
+        ]
+    },
+    "2": {
+        "training": [
+            {
+                "wsi": {
+                    "path": "path/to/file_1.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_1.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_2.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_2.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_4.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_4.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_5.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_5.json"
+                }
+            }
+        ],
+        "validation": [
+            {
+                "wsi": {
+                    "path": "path/to/file_3.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_3.json"
+                }
+            }
+        ]
+    },
+    "3": {
+        "training": [
+            {
+                "wsi": {
+                    "path": "path/to/file_1.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_1.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_3.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_3.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_4.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_4.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_5.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_5.json"
+                }
+            }
+        ],
+        "validation": [
+            {
+                "wsi": {
+                    "path": "path/to/file_2.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_2.json"
+                }
+            }
+        ]
+    },
+    "4": {
+        "training": [
+            {
+                "wsi": {
+                    "path": "path/to/file_2.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_2.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_3.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_3.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_4.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_4.json"
+                }
+            },
+            {
+                "wsi": {
+                    "path": "path/to/file_5.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_5.json"
+                }
+            }
+        ],
+        "validation": [
+            {
+                "wsi": {
+                    "path": "path/to/file_1.tif"
+                },
+                "wsa": {
+                    "path": "path/to/file_1.json"
+                }
+            }
+        ]
+    }
+}
