@@ -9,7 +9,6 @@ class nnUNetTrainer_WSD_wei_nnunet_aug_json_TIME(nnUNetTrainer_WSD_undefined_dat
         super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
  
         # SET THESE
-        self.ignore0 = False
         self.time = True
         self.albumentations_aug = False
         self.label_sampling_strategy = 'weighted' #'roi' # 'balanced' # 'weighted' 

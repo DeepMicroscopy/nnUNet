@@ -9,7 +9,6 @@ class nnUNetTrainer_WSD_bal_nnunet_aug(nnUNetTrainer_WSD_undefined_dataloader):
         super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
  
         # SET THESE
-        self.ignore0 = False
         self.time = False
         self.albumentations_aug = False
         self.label_sampling_strategy = 'balanced' #'roi' # 'balanced' # 'weighted' 
