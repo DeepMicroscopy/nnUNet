@@ -62,7 +62,6 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
         """used for debugging plans etc"""
 ###
         # SET THESE
-        self.ignore0 = None
         self.time = None
         self.albumentations_aug = None
         self.label_sampling_strategy = None #'roi' # 'balanced' # 'weighted' 
@@ -70,6 +69,7 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
         self.cpus = None
 
         # AUTO
+        #os.environ["WANDB_API_KEY"] = "2459e12074a33b05305333010292e1b75638e89b"
         self.wandb = True if 'WANDB_API_KEY' in os.environ else False
         self.aug = 'alb' if self.albumentations_aug else 'nnunet'
         self.iterator_template = f'wsd_{self.label_sampling_strategy}_iterator_{self.aug}_aug'
@@ -143,6 +143,7 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
         self.num_val_iterations_per_epoch = 50
         self.num_epochs = 1000
         self.current_epoch = 0
+        self.enable_deep_supervision=True
 
         ### Dealing with labels/regions
         self.label_manager = self.plans_manager.get_label_manager(dataset_json)
@@ -230,7 +231,7 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
             save_json(self.splits_json, splits_json_path)
 
 ### GET DATALOADERS - as generator objects
-    def get_dataloaders(self, subset=False, sample_double=False, cpus=10):
+    def get_dataloaders(self, subset=False, sample_double=False, cpus=1):
         
         if subset:
             print('\n\n\n\nUSING DATA SUBSET\n\n\n\n')
@@ -298,6 +299,7 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
         fill_template['seed']=seed
         fill_template['yaml_source'] = fold_split_dict
         fill_template['labels'] = labels
+        fill_template['image_backend'] = 'openslide'
         fill_template['batch_shape']['batch_size'] = batch_size
         fill_template['batch_shape']['spacing'] = spacing
         fill_template['batch_shape']['shape'] = patch_shape
@@ -433,87 +435,19 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
         # return tiger_val_batch_iterator, tiger_val_batch_iterator
         # return tiger_train_batch_iterator, tiger_train_batch_iterator
 
-### build_network_architecture changing to BATCH NORM ###
-    @staticmethod
-    def build_network_architecture(plans_manager: PlansManager,
-                                   dataset_json,
-                                   configuration_manager: ConfigurationManager,
-                                   num_input_channels,
-                                   enable_deep_supervision: bool = True) -> nn.Module:
-        num_stages = len(configuration_manager.conv_kernel_sizes)
-
-        dim = len(configuration_manager.conv_kernel_sizes[0])
-        conv_op = convert_dim_to_conv_op(dim)
-
-        label_manager = plans_manager.get_label_manager(dataset_json)
-
-        segmentation_network_class_name = configuration_manager.UNet_class_name
-        mapping = {
-            'PlainConvUNet': PlainConvUNet,
-            'ResidualEncoderUNet': ResidualEncoderUNet
-        }
-        kwargs = {
-            'PlainConvUNet': {
-                'conv_bias': True,
-                'norm_op': get_matching_batchnorm(conv_op),
-                'norm_op_kwargs': {'eps': 1e-5, 'affine': True},
-                'dropout_op': None, 'dropout_op_kwargs': None,
-                'nonlin': nn.LeakyReLU, 'nonlin_kwargs': {'inplace': True},
-            },
-            'ResidualEncoderUNet': {
-                'conv_bias': True,
-                'norm_op': get_matching_batchnorm(conv_op),
-                'norm_op_kwargs': {'eps': 1e-5, 'affine': True},
-                'dropout_op': None, 'dropout_op_kwargs': None,
-                'nonlin': nn.LeakyReLU, 'nonlin_kwargs': {'inplace': True},
-            }
-        }
-        assert segmentation_network_class_name in mapping.keys(), 'The network architecture specified by the plans file ' \
-                                                                  'is non-standard (maybe your own?). Yo\'ll have to dive ' \
-                                                                  'into either this ' \
-                                                                  'function (get_network_from_plans) or ' \
-                                                                  'the init of your nnUNetModule to accomodate that.'
-        network_class = mapping[segmentation_network_class_name]
-
-        conv_or_blocks_per_stage = {
-            'n_conv_per_stage'
-            if network_class != ResidualEncoderUNet else 'n_blocks_per_stage': configuration_manager.n_conv_per_stage_encoder,
-            'n_conv_per_stage_decoder': configuration_manager.n_conv_per_stage_decoder
-        }
-        # network class name!!
-        model = network_class(
-            input_channels=num_input_channels,
-            n_stages=num_stages,
-            features_per_stage=[min(configuration_manager.UNet_base_num_features * 2 ** i,
-                                    configuration_manager.unet_max_num_features) for i in range(num_stages)],
-            conv_op=conv_op,
-            kernel_sizes=configuration_manager.conv_kernel_sizes,
-            strides=configuration_manager.pool_op_kernel_sizes,
-            num_classes=label_manager.num_segmentation_heads,
-            deep_supervision=enable_deep_supervision,
-            **conv_or_blocks_per_stage,
-            **kwargs[segmentation_network_class_name]
-        )
-        model.apply(InitWeights_He(1e-2))
-        if network_class == ResidualEncoderUNet:
-            model.apply(init_last_bn_before_add_to_0)
-        return model
-    
-    ### Hardcoded ignore 0 (not doable via )
+    ### Hardcoded ignore 0 removed (adapted to ignore label from nnUNet)
     def _build_loss(self):
-        if self.ignore0:
-            print()
         if self.label_manager.has_regions:
             loss = DC_and_BCE_loss({},
                                    {'batch_dice': self.configuration_manager.batch_dice,
                                     'do_bg': True, 'smooth': 1e-5, 'ddp': self.is_ddp},
-                                   use_ignore_label= 0 if self.ignore0 else self.label_manager.ignore_label is not None,
+                                   use_ignore_label=self.label_manager.ignore_label is not None,
                                    dice_class=MemoryEfficientSoftDiceLoss)
         else:
             loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
                                    'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {}, weight_ce=1, weight_dice=1,
-                                  ignore_label= 0 if self.ignore0 else self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
-
+                                  ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
+            
         deep_supervision_scales = self._get_deep_supervision_scales()
 
         # we give each output a weight which decreases exponentially (division by 2) as the resolution decreases
@@ -536,7 +470,7 @@ class nnUNetTrainer_WSD_undefined_dataloader(nnUNetTrainer):
         maybe_mkdir_p(self.output_folder)
 
         # make sure deep supervision is on in the network
-        self.set_deep_supervision_enabled(True)
+        self.set_deep_supervision_enabled(self.enable_deep_supervision)
 
         self.print_plans()
         empty_cache(self.device)

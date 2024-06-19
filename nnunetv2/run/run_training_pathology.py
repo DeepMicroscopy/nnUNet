@@ -114,7 +114,8 @@ def cleanup_ddp():
     dist.destroy_process_group()
 
 
-def run_ddp(rank, dataset_name_or_id, configuration, fold, tr, p, use_compressed, disable_checkpointing, c, val, pretrained_weights, npz, world_size):
+def run_ddp(rank, dataset_name_or_id, configuration, fold, tr, p, use_compressed, disable_checkpointing, c, val,
+            pretrained_weights, npz, val_with_best, world_size):
     setup_ddp(rank, world_size)
     torch.cuda.set_device(torch.device('cuda', dist.get_rank()))
 
@@ -135,6 +136,8 @@ def run_ddp(rank, dataset_name_or_id, configuration, fold, tr, p, use_compressed
     if not val:
         nnunet_trainer.run_training()
 
+    if val_with_best:
+        nnunet_trainer.load_checkpoint(join(nnunet_trainer.output_folder, 'checkpoint_best.pth'))
     nnunet_trainer.perform_actual_validation(npz)
     cleanup_ddp()
 
@@ -150,6 +153,7 @@ def run_training(dataset_name_or_id: Union[str, int],
                  continue_training: bool = False,
                  only_run_validation: bool = False,
                  disable_checkpointing: bool = False,
+                 val_with_best: bool = False,
                  device: torch.device = torch.device('cuda')):
     if isinstance(fold, str):
         if fold != 'all':
@@ -158,6 +162,9 @@ def run_training(dataset_name_or_id: Union[str, int],
             except ValueError as e:
                 print(f'Unable to convert given value for fold to int: {fold}. fold must bei either "all" or an integer!')
                 raise e
+
+    if val_with_best:
+        assert not disable_checkpointing, '--val_best is not compatible with --disable_checkpointing'
 
     if num_gpus > 1:
         assert device.type == 'cuda', f"DDP training (triggered by num_gpus > 1) is only implemented for cuda devices. Your device: {device}"
@@ -181,6 +188,7 @@ def run_training(dataset_name_or_id: Union[str, int],
                      only_run_validation,
                      pretrained_weights,
                      export_validation_probabilities,
+                     val_with_best,
                      num_gpus),
                  nprocs=num_gpus,
                  join=True)
@@ -300,4 +308,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(f"[RUNNING TRAINING] dataset {args.dataset_name_or_id}, 2d model, FOLD {args.fold}, pathology trainer and planner")
-    run_training(args.dataset_name_or_id, '2d', args.fold, args.trainer, args.planner)
+    run_training(args.dataset_name_or_id, '2d', args.fold, args.trainer, args.planner, device= torch.device('mps'))

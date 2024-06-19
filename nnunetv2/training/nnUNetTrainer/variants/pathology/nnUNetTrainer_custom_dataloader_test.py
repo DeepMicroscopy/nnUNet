@@ -62,7 +62,6 @@ class nnUNetTrainer_custom_dataloader_test(nnUNetTrainer):
         """used for debugging plans etc"""
 ###
         # SET THESE
-        self.ignore0 = True
         self.time = True
         self.albumentations_aug = False
         self.label_sampling_strategy = 'balanced' #'roi' #'roi' # 'balanced' # 'weighted' 
@@ -509,20 +508,17 @@ class nnUNetTrainer_custom_dataloader_test(nnUNetTrainer):
             model.apply(init_last_bn_before_add_to_0)
         return model
     
-    ### Hardcoded ignore 0 (not doable via )
     def _build_loss(self):
-        if self.ignore0:
-            print()
         if self.label_manager.has_regions:
             loss = DC_and_BCE_loss({},
                                    {'batch_dice': self.configuration_manager.batch_dice,
                                     'do_bg': True, 'smooth': 1e-5, 'ddp': self.is_ddp},
-                                   use_ignore_label= 0 if self.ignore0 else self.label_manager.ignore_label is not None,
+                                   use_ignore_label=self.label_manager.ignore_label is not None,
                                    dice_class=MemoryEfficientSoftDiceLoss)
         else:
             loss = DC_and_CE_loss({'batch_dice': self.configuration_manager.batch_dice,
                                    'smooth': 1e-5, 'do_bg': False, 'ddp': self.is_ddp}, {}, weight_ce=1, weight_dice=1,
-                                  ignore_label= 0 if self.ignore0 else self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
+                                  ignore_label=self.label_manager.ignore_label, dice_class=MemoryEfficientSoftDiceLoss)
 
         deep_supervision_scales = self._get_deep_supervision_scales()
 
