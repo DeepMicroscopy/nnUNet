@@ -118,3 +118,6 @@ ENV/
 # VS Code
 .DS_Store
 launch.json
+
+# wandb
+wandb/
