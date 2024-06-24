@@ -891,6 +891,7 @@ def predict_entry_point():
 
 
 if __name__ == '__main__':
+    """
     # predict a bunch of files
     from nnunetv2.paths import nnUNet_results, nnUNet_raw
 
@@ -944,3 +945,5 @@ if __name__ == '__main__':
     #                              num_processes_preprocessing=2, num_processes_segmentation_export=2,
     #                              folder_with_segs_from_prev_stage='/media/isensee/data/nnUNet_raw/Dataset003_Liver/imagesTs_predlowres',
     #                              num_parts=1, part_id=0)
+    """
+    predict_entry_point()
